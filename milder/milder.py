@@ -19,6 +19,7 @@ class Milder:
         self.stylesheet_content = ''
         self.html_elements = []
         self.styles = ''
+        self.regex_all_chat = re.compile(r'^[a-zA-z][-][\n]]')
 
     @staticmethod
     def get_attribute_values(content: str, start_token: str, end_token: str, offset: int, keyword=None):
@@ -47,10 +48,13 @@ class Milder:
     def __get_code_snippets(content: str, start_token: str, end_token: str):
         snippet = ''
         start_index = content.find(start_token)
+        prev_char = content[start_index-1:start_index]
 
         if start_index is not -1:
             end_token = content.find(end_token, start_index) + 1
             if end_token is not -1:
+                if prev_char is not "" and prev_char is not "\n" and prev_char is not ".":
+                    return
                 snippet = content[start_index:end_token]
         return snippet
 
@@ -74,8 +78,9 @@ class Milder:
 
     def __get_class_snippet(self, class_name, content):
         snippet = Milder.__get_code_snippets(content, start_token=class_name + " {", end_token="}")
-        self.styles += snippet+"\n"
-        return
+        if snippet is not None:
+            self.styles += snippet+"\n"
+            return
 
     def get_html_elements(self, content: str):
 
@@ -89,7 +94,7 @@ class Milder:
                 element = match.group().split('<')[1]
                 self.html_elements.append(element)
 
-        # print("self.html_elements:", self.html_elements)
+        print("self.html_elements:", set(self.html_elements))
         return
 
     def copy_classes_from_stylesheet(self):
@@ -100,8 +105,9 @@ class Milder:
         for element in self.html_elements:
             snippet = self.__get_code_snippets(content=self.stylesheet_content, start_token=element + "{",
                                                end_token="}")
-            print(snippet)
-            self.styles += snippet+"\n"
+            if snippet is not None:
+                print(snippet)
+                self.styles += snippet+"\n"
 
     def __get_individual_classes(self, res):
         for _class in res:
@@ -114,6 +120,9 @@ class Milder:
 
     def create_individual_classes(self, res):
         self.__get_individual_classes(res)
+        self.classes = set(self.classes)
+        print("individual classes:", self.classes)
+        return
 
     def get_classes(self, html_content):
         return self.get_attribute_values(html_content, start_token='class="', end_token='"',
@@ -150,7 +159,7 @@ class Milder:
 
 
 if __name__ == "__main__":
-    html_file = 'index.html'
+    html_file = 'new.html'
     html_file_dir = os.path.join(os.getcwd(), "../input/")
 
     print(Milder(filename=html_file, working_dir=html_file_dir).process())
